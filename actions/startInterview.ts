@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import pdfParse from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -36,16 +36,36 @@ export async function startInterviewAction(prevState: any, formData: FormData) {
 
     // 1. Parse PDF
     const arrayBuffer = await resumeFile.arrayBuffer();
+
     const buffer = Buffer.from(arrayBuffer);
-    
+
     let resumeText = "";
+
     try {
-      const pdfData = await pdfParse(buffer);
-      resumeText = pdfData.text;
-    } catch (parseError) {
-      console.error("PDF Parsing Error:", parseError);
-      return { error: "Failed to parse the uploaded PDF file. Please ensure it's a valid text-based PDF." };
-    }
+
+      const parser = new PDFParse({
+
+        data: buffer,
+
+      });
+
+      const result = await parser.getText();
+
+      resumeText = result.text;
+
+      await parser.destroy(); // Always clean up
+
+    } catch (err) {
+
+      console.error(err);
+
+      return {
+
+        error: "Failed to parse PDF.",
+
+      };
+
+}
 
     if (!resumeText.trim()) {
       return { error: "The uploaded PDF appears to be empty or contains no readable text." };
@@ -80,7 +100,7 @@ You MUST respond strictly with a valid JSON object matching this schema:
 `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-flash-lite",
       contents: "Start the interview.",
       config: {
         systemInstruction: systemInstruction,
@@ -108,7 +128,7 @@ You MUST respond strictly with a valid JSON object matching this schema:
     console.error("Failed to start interview:", err);
     return { error: err.message || "An unexpected error occurred while starting the session." };
   }
-  
+
   // 5. Redirect the user to the Interview Room
   // Needs to be outside try-catch because Next.js redirect throws a special Error to halt execution
   redirect(`/interview/${newInterviewId}`);

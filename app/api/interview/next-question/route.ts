@@ -79,6 +79,10 @@ Your task:
 5. Update category scores based on their performance. Create new categories if applicable.
 6. Determine if the interview has reached a natural conclusion based on topics covered or a standard length (e.g., 5-7 questions).
 
+CRITICAL CONSTRAINT: You are having a fast-paced voice conversation.
+Every single nextQuestion you generate MUST be strictly under 20 words.
+Do not use conversational filler. Just ask the question.
+
 You MUST respond strictly with a valid JSON object matching this schema:
 {
   "nextQuestion": "The exact wording you will speak to the candidate.",
@@ -90,7 +94,7 @@ You MUST respond strictly with a valid JSON object matching this schema:
 
     // 5. Call Gemini API with structured JSON output
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-flash-lite",
       contents: contents,
       config: {
         systemInstruction: systemInstruction,
