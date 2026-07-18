@@ -131,6 +131,7 @@ export default function VoiceInput({ onSubmit }: VoiceInputProps) {
     const finalTranscript = (transcript + " " + interimTranscript).trim();
     if (finalTranscript && onSubmit) {
       onSubmit(finalTranscript);
+      clearTranscript();
     }
   };
 
