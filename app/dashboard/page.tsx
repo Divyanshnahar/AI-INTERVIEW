@@ -1,11 +1,26 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { startInterviewAction } from "@/actions/startInterview";
-import { Briefcase, Upload, Loader2, AlertCircle } from "lucide-react";
+import { Briefcase, Upload, Loader2, AlertCircle, FileText, X } from "lucide-react";
 
 export default function DashboardPage() {
   const [state, formAction, isPending] = useActionState(startInterviewAction, null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setSelectedFile(file);
+  };
+
+  const handleClearFile = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedFile(null);
+    // Reset the file input value so the same file can be re-selected
+    const input = document.getElementById("resume") as HTMLInputElement;
+    if (input) input.value = "";
+  };
 
   return (
     <div className="min-h-screen bg-black text-white p-8 flex items-center justify-center font-sans">
@@ -60,13 +75,17 @@ export default function DashboardPage() {
               <label htmlFor="resume" className="text-sm font-medium text-white/80">
                 Resume (PDF only)
               </label>
-              <div className="relative group cursor-pointer">
+
+              {/* Single file input — always in the DOM so the form can submit it.
+                  Shown as a drop zone when no file is selected, hidden otherwise. */}
+              <div className={`relative group cursor-pointer ${selectedFile ? "hidden" : ""}`}>
                 <input 
                   type="file" 
                   id="resume" 
                   name="resume"
                   accept="application/pdf"
                   required
+                  onChange={handleFileChange}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
                 <div className="w-full bg-black/40 border border-dashed border-white/20 rounded-xl py-10 px-4 flex flex-col items-center justify-center gap-4 group-hover:border-blue-500 group-hover:bg-blue-500/5 transition-all">
@@ -79,6 +98,42 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Selected file display (idle) */}
+              {selectedFile && !isPending && (
+                <div className="w-full bg-green-500/10 border border-green-500/30 rounded-xl px-4 py-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center shrink-0">
+                    <FileText size={20} className="text-green-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{selectedFile.name}</p>
+                    <p className="text-xs text-white/40 mt-0.5">
+                      {(selectedFile.size / 1024).toFixed(0)} KB · PDF
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearFile}
+                    className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                    aria-label="Remove file"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+
+              {/* Processing / uploading state */}
+              {selectedFile && isPending && (
+                <div className="w-full bg-blue-500/10 border border-blue-500/30 rounded-xl px-4 py-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+                    <Loader2 size={20} className="text-blue-400 animate-spin" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{selectedFile.name}</p>
+                    <p className="text-xs text-blue-400 mt-0.5">Uploading and processing…</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <button 

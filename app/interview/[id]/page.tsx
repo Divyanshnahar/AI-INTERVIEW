@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import VoiceInput from "@/components/VoiceInput";
-import { Loader2, User, Bot, AlertCircle, Volume2 } from "lucide-react";
+import { Loader2, User, Bot, AlertCircle, Volume2, PhoneOff } from "lucide-react";
 
 interface ChatMessage {
   role: "user" | "ai";
@@ -20,9 +20,12 @@ export default function InterviewRoom() {
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isAIThinking, setIsAIThinking] = useState<boolean>(false);
   const [isAISpeaking, setIsAISpeaking] = useState<boolean>(false);
+  const [isEndingInterview, setIsEndingInterview] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const hasPlayedIntro = useRef<boolean>(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Auto-scroll chat when history updates
   useEffect(() => {
@@ -30,6 +33,50 @@ export default function InterviewRoom() {
       chatEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [chatHistory, isAIThinking, isAISpeaking]);
+
+  // Auto-play the first AI message exactly once when the page loads
+  useEffect(() => {
+    if (
+      hasPlayedIntro.current ||
+      chatHistory.length !== 1 ||
+      chatHistory[0].role !== "ai"
+    ) {
+      return;
+    }
+
+    hasPlayedIntro.current = true;
+
+    const playIntro = async () => {
+      setIsAISpeaking(true);
+      try {
+        const ttsRes = await fetch("/api/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: chatHistory[0].content }),
+        });
+
+        if (!ttsRes.ok) throw new Error("TTS request failed");
+
+        const audioBlob = await ttsRes.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioUrl);
+        audioRef.current = audio;
+
+        audio.onended = () => {
+          setIsAISpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+          audioRef.current = null;
+        };
+
+        await audio.play();
+      } catch (err) {
+        console.error("Failed to auto-play intro:", err);
+        setIsAISpeaking(false);
+      }
+    };
+
+    playIntro();
+  }, [chatHistory]);
 
   const handleUserResponse = async (transcript: string) => {
     if (!transcript.trim() || !id) return;
@@ -75,10 +122,12 @@ export default function InterviewRoom() {
       const audioBlob = await ttsRes.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
+      audioRef.current = audio;
 
       // Handle when audio finishes playing
       audio.onended = () => {
         setIsAISpeaking(false);
+        audioRef.current = null;
         if (data.isComplete) {
           router.push(`/interview/${id}/feedback`);
         }
@@ -95,6 +144,37 @@ export default function InterviewRoom() {
     }
   };
 
+  const handleEndInterview = async () => {
+    if (!id) return;
+
+    const confirmed = window.confirm("Are you sure you want to end the interview?");
+    if (!confirmed) return;
+
+    // Stop any currently playing audio immediately
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    setIsEndingInterview(true);
+    setIsAISpeaking(false);
+    setIsAIThinking(false);
+
+    try {
+      // Fire-and-forget: ask the API to save a closing note before we leave
+      await fetch("/api/interview/next-question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interviewId: id, manualEnd: true }),
+      });
+    } catch (err) {
+      // Non-fatal — we still redirect even if this fails
+      console.error("Failed to save closing note:", err);
+    }
+
+    router.push(`/interview/${id}/feedback`);
+  };
+
   return (
     <div className="min-h-screen bg-black text-white flex flex-col font-sans">
       {/* Header */}
@@ -109,6 +189,23 @@ export default function InterviewRoom() {
           </div>
         </div>
         
+        {/* Right side: status + end button */}
+        <div className="flex items-center gap-3">
+
+        {/* End Interview button */}
+        <button
+          onClick={handleEndInterview}
+          disabled={isEndingInterview}
+          className="flex items-center gap-2 px-4 py-2 rounded-full border border-red-500/40 text-red-400/80 text-sm font-medium transition-all duration-200 hover:bg-red-500 hover:border-red-500 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {isEndingInterview ? (
+            <Loader2 size={15} className="animate-spin" />
+          ) : (
+            <PhoneOff size={15} />
+          )}
+          <span>{isEndingInterview ? "Ending..." : "End Interview"}</span>
+        </button>
+
         {/* Dynamic Status Indicator */}
         <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
           {isAISpeaking ? (
@@ -128,6 +225,8 @@ export default function InterviewRoom() {
             </>
           )}
         </div>
+
+        </div> {/* end right-side flex group */}
       </header>
 
       {/* Error Boundary Display */}
@@ -138,8 +237,8 @@ export default function InterviewRoom() {
         </div>
       )}
 
-      {/* Main Chat Area */}
-      <main className="flex-1 overflow-y-auto p-8 pb-32">
+      {/* Main Chat Area — pb-64 ensures the last message scrolls well above the fixed input */}
+      <main className="flex-1 overflow-y-auto p-8 pb-64">
         <div className="max-w-4xl mx-auto flex flex-col gap-8">
           {chatHistory.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-white/30 space-y-4">
@@ -194,9 +293,9 @@ export default function InterviewRoom() {
         </div>
       </main>
 
-      {/* Input Area */}
-      <div className="fixed bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black via-black to-transparent pointer-events-none">
-        <div className="max-w-3xl mx-auto pointer-events-auto">
+      {/* Input Area — solid background prevents chat text bleeding through */}
+      <div className="fixed bottom-0 left-0 w-full p-8 bg-black/90 backdrop-blur-lg border-t border-white/5">
+        <div className="max-w-3xl mx-auto">
           {/* Disable VoiceInput while AI is processing or speaking to prevent overlap */}
           <div className={`transition-opacity duration-300 ${isAIThinking || isAISpeaking ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
             <VoiceInput onSubmit={handleUserResponse} />

@@ -9,11 +9,64 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function POST(req: Request) {
   try {
-    const { interviewId, studentAnswer } = await req.json();
+    const { interviewId, studentAnswer, manualEnd } = await req.json();
 
-    if (!interviewId || !studentAnswer) {
+    if (!interviewId) {
       return NextResponse.json(
-        { error: "Missing required fields (interviewId, studentAnswer)" },
+        { error: "Missing required field: interviewId" },
+        { status: 400 }
+      );
+    }
+
+    // manualEnd: candidate ended early — skip normal Q&A flow, generate closing note
+    if (manualEnd) {
+      const interview = await prisma.interview.findUnique({
+        where: { id: interviewId },
+      });
+
+      if (!interview) {
+        return NextResponse.json({ error: "Interview not found" }, { status: 404 });
+      }
+
+      const closingInstruction = `
+You are a professional interviewer wrapping up a "${interview.jobTitle}" interview.
+The candidate has chosen to end the session early.
+Generate a brief, warm closing statement thanking them and letting them know their feedback is being prepared.
+Keep it under 20 words and natural enough to be spoken aloud.
+
+You MUST respond strictly with a valid JSON object:
+{ "nextQuestion": "Your closing statement.", "isComplete": true, "updatedCategoryScores": ${JSON.stringify(interview.categoryScores || {})} }
+`;
+
+      const closingResponse = await ai.models.generateContent({
+        model: "gemini-3.1-flash-lite",
+        contents: [{ role: "user", parts: [{ text: "End the interview now." }] }],
+        config: { systemInstruction: closingInstruction, responseMimeType: "application/json" },
+      });
+
+      const closingText = closingResponse.text;
+      if (!closingText) throw new Error("Failed to generate closing statement.");
+
+      const closingResult = JSON.parse(closingText);
+
+      await prisma.transcript.create({
+        data: { interviewId, role: "AI", content: closingResult.nextQuestion },
+      });
+
+      await prisma.interview.update({
+        where: { id: interviewId },
+        data: { status: "COMPLETED", categoryScores: closingResult.updatedCategoryScores },
+      });
+
+      return NextResponse.json({
+        nextQuestion: closingResult.nextQuestion,
+        isComplete: true,
+      });
+    }
+
+    if (!studentAnswer) {
+      return NextResponse.json(
+        { error: "Missing required field: studentAnswer" },
         { status: 400 }
       );
     }
