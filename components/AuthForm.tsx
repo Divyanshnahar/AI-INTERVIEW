@@ -29,7 +29,8 @@ export default function AuthForm() {
         if (res?.error) {
           setError("Invalid email or password");
         } else {
-          router.refresh(); // Refresh to let the server component pick up the session
+          router.push('/');
+          router.refresh();
         }
       } else {
         const formData = new FormData();
@@ -49,6 +50,7 @@ export default function AuthForm() {
           });
           
           if (!loginRes?.error) {
+            router.push('/');
             router.refresh();
           }
         }
