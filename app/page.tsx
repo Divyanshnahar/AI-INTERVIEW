@@ -70,7 +70,7 @@ export default async function Home() {
         <div className="relative z-10 max-w-5xl mx-auto flex flex-col items-center text-center gap-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-sm font-medium">
             <Sparkles className="w-4 h-4" />
-            <span>The future of interview prep is here</span>
+            <span>Make sure you run it on GOOGLE CHROME only</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1]">
