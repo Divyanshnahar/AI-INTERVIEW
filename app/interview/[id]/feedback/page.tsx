@@ -1,10 +1,17 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import ScoreChart from "@/components/ScoreChart";
 import { User, Bot, Target, FileText, Activity, Home } from "lucide-react";
 import Link from "next/link";
+import { auth } from "@/auth";
 
 export default async function FeedbackPage(props: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
   const params = await props.params;
   const id = params.id;
 
@@ -18,6 +25,10 @@ export default async function FeedbackPage(props: { params: Promise<{ id: string
   });
 
   if (!interview) {
+    notFound();
+  }
+
+  if (interview.userId !== session.user.id) {
     notFound();
   }
 
