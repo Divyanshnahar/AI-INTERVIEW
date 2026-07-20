@@ -95,6 +95,8 @@ Your task:
 Generate a short, welcoming opening question to start the interview. Make it natural and conversational. 
 For example: "Hi, I see you applied for the [Title] role. To start, could you walk me through your experience at [Company]?"
 
+CRITICAL: You are an interviewer. Your introduction MUST be a single sentence, under 15 words. Do not list experience; just ask the first question.
+
 You MUST respond strictly with a valid JSON object matching this schema:
 { "nextQuestion": "The exact wording you will speak to the candidate." }
 `;

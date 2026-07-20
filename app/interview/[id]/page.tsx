@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import VoiceInput from "@/components/VoiceInput";
 import { Loader2, User, Bot, AlertCircle, Volume2, PhoneOff } from "lucide-react";
+import { getInterview } from "@/actions/getInterview";
 
 interface ChatMessage {
   role: "user" | "ai";
@@ -34,25 +35,35 @@ export default function InterviewRoom() {
     }
   }, [chatHistory, isAIThinking, isAISpeaking]);
 
-  // Auto-play the first AI message exactly once when the page loads
+  // Fetch initial chat history on mount
   useEffect(() => {
-    if (
-      hasPlayedIntro.current ||
-      chatHistory.length !== 1 ||
-      chatHistory[0].role !== "ai"
-    ) {
-      return;
-    }
+    if (!id) return;
+    const loadInterview = async () => {
+      try {
+        const data = await getInterview(id);
+        if (data && data.transcripts) {
+          const history = data.transcripts.map(t => ({
+            role: t.role.toLowerCase() as "user" | "ai",
+            content: t.content
+          }));
+          setChatHistory(history);
+        }
+      } catch (err) {
+        console.error("Failed to load interview", err);
+      }
+    };
+    loadInterview();
+  }, [id]);
 
-    hasPlayedIntro.current = true;
-
-    const playIntro = async () => {
+  // Unified reusable TTS playback function
+  const playAudio = async (text: string): Promise<void> => {
+    return new Promise(async (resolve) => {
       setIsAISpeaking(true);
       try {
         const ttsRes = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: chatHistory[0].content }),
+          body: JSON.stringify({ text }),
         });
 
         if (!ttsRes.ok) throw new Error("TTS request failed");
@@ -66,16 +77,38 @@ export default function InterviewRoom() {
           setIsAISpeaking(false);
           URL.revokeObjectURL(audioUrl);
           audioRef.current = null;
+          resolve();
+        };
+        
+        audio.onerror = (err) => {
+          console.error("Audio playback error:", err);
+          setIsAISpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+          audioRef.current = null;
+          resolve(); // Resolve anyway so flow doesn't block permanently
         };
 
         await audio.play();
       } catch (err) {
-        console.error("Failed to auto-play intro:", err);
+        console.error("Failed to play audio:", err);
         setIsAISpeaking(false);
+        resolve(); // Resolve to not block the interview if TTS fails
       }
-    };
+    });
+  };
 
-    playIntro();
+  // Auto-play the first AI message exactly once
+  useEffect(() => {
+    if (
+      hasPlayedIntro.current ||
+      chatHistory.length === 0 ||
+      chatHistory[0].role !== "ai"
+    ) {
+      return;
+    }
+
+    hasPlayedIntro.current = true;
+    playAudio(chatHistory[0].content);
   }, [chatHistory]);
 
   const handleUserResponse = async (transcript: string) => {
@@ -106,35 +139,13 @@ export default function InterviewRoom() {
       // 3. Add AI's text to the chat history
       setChatHistory((prev) => [...prev, { role: "ai", content: nextQuestion }]);
       setIsAIThinking(false);
-      setIsAISpeaking(true);
 
-      // 4. Fetch the Text-to-Speech audio
-      const ttsRes = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: nextQuestion }),
-      });
+      // 4. Play TTS audio and await completion
+      await playAudio(nextQuestion);
 
-      if (!ttsRes.ok) {
-        throw new Error("Failed to generate audio response.");
+      if (data.isComplete) {
+        router.push(`/interview/${id}/feedback`);
       }
-
-      const audioBlob = await ttsRes.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-
-      // Handle when audio finishes playing
-      audio.onended = () => {
-        setIsAISpeaking(false);
-        audioRef.current = null;
-        if (data.isComplete) {
-          router.push(`/interview/${id}/feedback`);
-        }
-      };
-
-      // Play the audio
-      await audio.play();
 
     } catch (err: any) {
       console.error("Interview flow error:", err);
@@ -161,14 +172,22 @@ export default function InterviewRoom() {
     setIsAIThinking(false);
 
     try {
-      // Fire-and-forget: ask the API to save a closing note before we leave
-      await fetch("/api/interview/next-question", {
+      const res = await fetch("/api/interview/next-question", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ interviewId: id, manualEnd: true }),
       });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const closingRemark = data.nextQuestion;
+        
+        if (closingRemark) {
+          setChatHistory((prev) => [...prev, { role: "ai", content: closingRemark }]);
+          await playAudio(closingRemark);
+        }
+      }
     } catch (err) {
-      // Non-fatal — we still redirect even if this fails
       console.error("Failed to save closing note:", err);
     }
 

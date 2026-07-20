@@ -31,8 +31,7 @@ export async function POST(req: Request) {
       const closingInstruction = `
 You are a professional interviewer wrapping up a "${interview.jobTitle}" interview.
 The candidate has chosen to end the session early.
-Generate a brief, warm closing statement thanking them and letting them know their feedback is being prepared.
-Keep it under 20 words and natural enough to be spoken aloud.
+CRITICAL: Your closing remark MUST be under 10 words. Example: 'Thank you, I will submit my feedback now.'
 
 You MUST respond strictly with a valid JSON object:
 { "nextQuestion": "Your closing statement.", "isComplete": true, "updatedCategoryScores": ${JSON.stringify(interview.categoryScores || {})} }
