@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import ScoreChart from "@/components/ScoreChart";
-import { User, Bot, Target, FileText, Activity } from "lucide-react";
+import { User, Bot, Target, FileText, Activity, Home } from "lucide-react";
+import Link from "next/link";
 
 export default async function FeedbackPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -44,18 +45,27 @@ export default async function FeedbackPage(props: { params: Promise<{ id: string
       <div className="max-w-5xl mx-auto space-y-10">
         
         {/* Header */}
-        <header className="border-b border-white/10 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <header className="border-b border-white/10 pb-8 flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold tracking-tight mb-2">Interview Feedback</h1>
             <p className="text-white/50 text-lg">
               Role: <span className="text-white/90 font-medium">{interview.jobTitle}</span>
             </p>
           </div>
-          <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2 w-fit">
-            <Activity size={16} className="text-blue-400" />
-            <span className="text-sm font-medium tracking-wide uppercase text-blue-100">
-              {interview.status.replace("_", " ")}
-            </span>
+          <div className="flex flex-col md:items-end gap-3">
+            <Link 
+              href="/"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-all w-fit shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:scale-105 active:scale-95"
+            >
+              <Home size={18} />
+              <span>Go to Home</span>
+            </Link>
+            <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2 w-fit">
+              <Activity size={16} className="text-blue-400" />
+              <span className="text-sm font-medium tracking-wide uppercase text-blue-100">
+                {interview.status.replace("_", " ")}
+              </span>
+            </div>
           </div>
         </header>
 

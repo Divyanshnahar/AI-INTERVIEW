@@ -256,9 +256,9 @@ export default function InterviewRoom() {
         </div>
       )}
 
-      {/* Main Chat Area — pb-64 ensures the last message scrolls well above the fixed input */}
-      <main className="flex-1 overflow-y-auto p-8 pb-64">
-        <div className="max-w-4xl mx-auto flex flex-col gap-8">
+      {/* Main Chat Area — pb-[40vh] ensures the last message scrolls well above the fixed input */}
+      <main className="flex-1 overflow-y-auto p-8 pb-[40vh]">
+        <div className="max-w-4xl mx-auto flex flex-col gap-4">
           {chatHistory.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-white/30 space-y-4">
               <Bot size={48} className="opacity-20" />
@@ -279,7 +279,7 @@ export default function InterviewRoom() {
                     {msg.role === "user" ? <User size={20} /> : <Bot size={20} />}
                   </div>
                   
-                  <div className={`p-5 rounded-2xl text-lg leading-relaxed shadow-lg
+                  <div className={`p-3 rounded-2xl text-sm leading-relaxed shadow-lg
                     ${msg.role === "user" 
                       ? "bg-blue-600 text-white rounded-tr-sm" 
                       : "bg-white/5 border border-white/10 text-white/90 rounded-tl-sm backdrop-blur-sm"
@@ -299,7 +299,7 @@ export default function InterviewRoom() {
                 <div className="shrink-0 w-10 h-10 rounded-full bg-white/10 text-white/60 flex items-center justify-center">
                   <Bot size={20} />
                 </div>
-                <div className="p-5 rounded-2xl rounded-tl-sm bg-white/5 border border-white/10 flex items-center gap-2">
+                <div className="p-3 rounded-2xl rounded-tl-sm bg-white/5 border border-white/10 flex items-center gap-2">
                   <span className="w-2 h-2 bg-white/40 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
                   <span className="w-2 h-2 bg-white/40 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
                   <span className="w-2 h-2 bg-white/40 rounded-full animate-bounce"></span>

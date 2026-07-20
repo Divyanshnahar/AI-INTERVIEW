@@ -156,14 +156,14 @@ export default function VoiceInput({ onSubmit }: VoiceInputProps) {
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
       <div 
-        className={`relative w-full h-64 flex flex-col rounded-3xl border-2 transition-all duration-500 overflow-hidden backdrop-blur-md shadow-2xl
+        className={`relative w-full h-48 flex flex-col rounded-3xl border-2 transition-all duration-500 overflow-hidden backdrop-blur-md shadow-2xl
           ${isListening 
             ? 'border-red-500/40 bg-gradient-to-b from-red-500/10 to-transparent shadow-[0_0_40px_rgba(239,68,68,0.15)]' 
             : 'border-white/10 bg-white/5 hover:border-white/20'
           }`}
       >
         {/* Header Indicator */}
-        <div className="px-6 py-4 flex items-center justify-between border-b border-white/5 bg-black/20">
+        <div className="px-4 py-3 flex items-center justify-between border-b border-white/5 bg-black/20">
           <div className="flex items-center gap-3">
             <div className="relative flex items-center justify-center w-3 h-3">
               {isListening && (
@@ -171,7 +171,7 @@ export default function VoiceInput({ onSubmit }: VoiceInputProps) {
               )}
               <span className={`relative inline-flex rounded-full h-2 w-2 ${isListening ? 'bg-red-500' : 'bg-white/20'}`}></span>
             </div>
-            <span className={`text-sm font-medium tracking-wide uppercase ${isListening ? 'text-red-400' : 'text-white/40'}`}>
+            <span className={`text-xs font-medium tracking-wide uppercase ${isListening ? 'text-red-400' : 'text-white/40'}`}>
               {isListening ? "Recording Active" : "Ready to Record"}
             </span>
           </div>
@@ -186,11 +186,11 @@ export default function VoiceInput({ onSubmit }: VoiceInputProps) {
         </div>
 
         {/* Transcript Area */}
-        <div className="flex-1 p-6 overflow-y-auto">
-          <div className="text-xl leading-relaxed font-light tracking-wide">
+        <div className="flex-1 p-4 overflow-y-auto">
+          <div className="text-sm leading-relaxed font-light tracking-wide">
             {!hasContent ? (
               <div className="h-full min-h-[120px] flex flex-col items-center justify-center text-white/20 gap-3">
-                <Sparkles size={32} className="opacity-50" />
+                <Sparkles size={24} className="opacity-50" />
                 <p>Tap the microphone and start speaking...</p>
               </div>
             ) : (
@@ -218,7 +218,7 @@ export default function VoiceInput({ onSubmit }: VoiceInputProps) {
       <div className="flex items-center justify-between gap-4 px-2">
         <button
           onClick={toggleListening}
-          className={`group relative flex items-center justify-center w-20 h-20 rounded-full transition-all duration-300 hover:scale-105 active:scale-95
+          className={`group relative flex items-center justify-center w-14 h-14 rounded-full transition-all duration-300 hover:scale-105 active:scale-95
             ${isListening 
               ? 'bg-red-500 text-white shadow-[0_0_30px_rgba(239,68,68,0.5)]' 
               : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
@@ -228,22 +228,22 @@ export default function VoiceInput({ onSubmit }: VoiceInputProps) {
             <span className="absolute inset-0 rounded-full animate-ping bg-red-500/40" />
           )}
           {isListening ? (
-            <MicOff size={32} className="relative z-10" />
+            <MicOff size={24} className="relative z-10" />
           ) : (
-            <Mic size={32} className="relative z-10" />
+            <Mic size={24} className="relative z-10" />
           )}
         </button>
 
         <button
           onClick={handleSubmit}
           disabled={!hasContent}
-          className={`group flex items-center gap-3 px-8 py-4 rounded-2xl font-semibold transition-all duration-300
+          className={`group flex items-center gap-3 px-6 py-3 rounded-2xl font-semibold transition-all duration-300
             ${hasContent
               ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_30px_rgba(37,99,235,0.3)] hover:scale-105 active:scale-95'
               : 'bg-white/5 text-white/20 cursor-not-allowed border border-white/5'
             }`}
         >
-          <span className="text-lg">Submit</span>
+          <span className="text-sm">Submit</span>
           <Send size={20} className={hasContent ? 'group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform' : ''} />
         </button>
       </div>
