@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { PDFParse } from "pdf-parse";
 import { GoogleGenAI } from "@google/genai";
@@ -11,61 +12,69 @@ export async function startInterviewAction(prevState: any, formData: FormData) {
   let newInterviewId = "";
 
   try {
-    const jobTitle = formData.get("jobTitle") as string;
-    const jobDescription = formData.get("jobDescription") as string;
-    const resumeFile = formData.get("resume") as File;
-
-    if (!jobTitle || !jobDescription || !resumeFile) {
-      return { error: "Please provide job title, description, and resume." };
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { error: "You must be logged in to start an interview." };
     }
 
-    if (resumeFile.type !== "application/pdf") {
+    const jobTitle = formData.get("jobTitle") as string;
+    const jobDescription = formData.get("jobDescription") as string;
+    const useSavedResume = formData.get("useSavedResume") === "true";
+    const resumeFile = formData.get("resume") as File | null;
+
+    if (!jobTitle || !jobDescription) {
+      return { error: "Please provide job title and description." };
+    }
+
+    if (!useSavedResume && (!resumeFile || resumeFile.size === 0)) {
+      return { error: "Please upload a resume." };
+    }
+
+    if (!useSavedResume && resumeFile && resumeFile.type !== "application/pdf") {
       return { error: "Only PDF files are supported for resumes." };
     }
 
-    // Ensure we have a dummy user for the interview if auth isn't fully set up yet
-    let user = await prisma.user.findFirst();
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+    });
+
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: "test_candidate@example.com",
-          name: "Test Candidate",
-        },
-      });
+      return { error: "User account not found." };
     }
 
-    // 1. Parse PDF
-    const arrayBuffer = await resumeFile.arrayBuffer();
-
-    const buffer = Buffer.from(arrayBuffer);
-
+    // 1. Parse PDF or use saved text
     let resumeText = "";
 
-    try {
-
-      const parser = new PDFParse({
-
-        data: buffer,
-
-      });
-
-      const result = await parser.getText();
-
-      resumeText = result.text;
-
-      await parser.destroy(); // Always clean up
-
-    } catch (err) {
-
-      console.error(err);
-
-      return {
-
-        error: "Failed to parse PDF.",
-
-      };
-
-}
+    if (useSavedResume) {
+      if (!user.savedResumeText) {
+        return { error: "No saved resume found for this user." };
+      }
+      resumeText = user.savedResumeText;
+    } else {
+      if (!resumeFile) {
+        return { error: "Please upload a resume." };
+      }
+      const arrayBuffer = await resumeFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      
+      try {
+        const parser = new PDFParse({
+          data: buffer,
+        });
+        const result = await parser.getText();
+        resumeText = result.text;
+        await parser.destroy(); // Always clean up
+        
+        // Save the newly extracted text to the user profile
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { savedResumeText: resumeText }
+        });
+      } catch (err) {
+        console.error(err);
+        return { error: "Failed to parse PDF." };
+      }
+    }
 
     if (!resumeText.trim()) {
       return { error: "The uploaded PDF appears to be empty or contains no readable text." };

@@ -1,6 +1,7 @@
 import { auth, signOut } from "@/auth";
 import Link from "next/link";
 import { ArrowRight, Bot, CheckCircle2, Sparkles, User, LogOut, History } from "lucide-react";
+import UpdateResumeModal from "@/components/UpdateResumeModal";
 
 export default async function Home() {
   const session = await auth();
@@ -27,6 +28,7 @@ export default async function Home() {
                   <History className="w-4 h-4" />
                   History
                 </Link>
+                <UpdateResumeModal />
                 <div className="flex items-center gap-2 text-sm text-gray-300 bg-white/5 py-1.5 px-3 rounded-full border border-white/10">
                   <User className="w-4 h-4" />
                   {session.user.email}

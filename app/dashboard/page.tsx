@@ -1,12 +1,24 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect } from "react";
 import { startInterviewAction } from "@/actions/startInterview";
+import { getUserAction } from "@/actions/getUser";
 import { Briefcase, Upload, Loader2, AlertCircle, FileText, X } from "lucide-react";
 
 export default function DashboardPage() {
   const [state, formAction, isPending] = useActionState(startInterviewAction, null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [hasSavedResume, setHasSavedResume] = useState(false);
+  const [useSavedResume, setUseSavedResume] = useState(false);
+
+  useEffect(() => {
+    getUserAction().then(user => {
+      if (user?.savedResumeText) {
+        setHasSavedResume(true);
+        setUseSavedResume(true);
+      }
+    });
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
@@ -76,15 +88,41 @@ export default function DashboardPage() {
                 Resume (PDF only)
               </label>
 
+              {hasSavedResume && (
+                <div className="flex items-center gap-6 mb-2 bg-white/5 p-4 rounded-xl border border-white/10">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="resumeOption" 
+                      checked={useSavedResume}
+                      onChange={() => setUseSavedResume(true)}
+                      className="accent-blue-500 w-4 h-4"
+                    />
+                    <span className="text-sm font-medium text-white/90">Use Saved Resume</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="resumeOption" 
+                      checked={!useSavedResume}
+                      onChange={() => setUseSavedResume(false)}
+                      className="accent-blue-500 w-4 h-4"
+                    />
+                    <span className="text-sm font-medium text-white/90">Upload New Resume</span>
+                  </label>
+                  <input type="hidden" name="useSavedResume" value={useSavedResume.toString()} />
+                </div>
+              )}
+
               {/* Single file input — always in the DOM so the form can submit it.
                   Shown as a drop zone when no file is selected, hidden otherwise. */}
-              <div className={`relative group cursor-pointer ${selectedFile ? "hidden" : ""}`}>
+              <div className={`relative group cursor-pointer ${selectedFile || useSavedResume ? "hidden" : ""}`}>
                 <input 
                   type="file" 
                   id="resume" 
                   name="resume"
                   accept="application/pdf"
-                  required
+                  required={!useSavedResume}
                   onChange={handleFileChange}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                 />
